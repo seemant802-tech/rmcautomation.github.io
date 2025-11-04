@@ -1,0 +1,5 @@
+{
+  "name": "Cube Quality Analysis Report",
+  "description": "An AI-powered application for generating, managing, and analyzing tamper-proof cube quality reports, now with admin-only access controls and bulk data import from Excel.",
+  "requestFramePermissions": []
+}
