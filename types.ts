@@ -56,6 +56,10 @@ export interface ReportFormData {
 
   // Observations
   observations?: string;
+  
+  // Signed Report
+  signedReportPdf?: File;
+  signedReportPdfBlob?: Blob;
 }
 
 // The complete report object, including analysis and metadata.

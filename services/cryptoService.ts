@@ -25,7 +25,7 @@ export function createCanonicalReportString(report: object): string {
         .sort()
         .reduce((acc, key) => {
             // Exclude fields that shouldn't be part of the hash
-            if (key !== 'hash' && key !== 'timestamp' && !key.endsWith('Blob') && !key.endsWith('Media')) {
+            if (key !== 'hash' && key !== 'timestamp' && !key.endsWith('Blob') && !key.endsWith('Media') && key !== 'signedReportPdf') {
                 (acc as any)[key] = (report as any)[key];
             }
             return acc;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ReportList from './ReportList.tsx';
 import ReportWorkflow from './ReportWorkflow.tsx';
 import { ConcreteReport } from '../types.ts';
-import * as db from '../services/dbService.ts';
+import * as dbService from '../services/dbService.ts';
 import { exportReportsToExcel, importReportsFromExcel, exportTemplateToExcel } from '../services/excelService.ts';
 
 type View = 'list' | 'workflow';
@@ -19,21 +19,24 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({ isGuest, onBackToLo
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const loadReports = useCallback(async () => {
+    const fetchReports = useCallback(async () => {
+        setError(null);
         setLoading(true);
         try {
-            const storedReports = await db.getAllReports();
-            setReports(storedReports.sort((a,b) => (b.timestamp || '').localeCompare(a.timestamp || '')));
+            const localReports = await dbService.getAllReports();
+            setReports(localReports.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || '')));
         } catch (err) {
-            setError("Failed to load reports from the database.");
+             const message = err instanceof Error ? err.message : 'An unknown error occurred.';
+             setError(`Failed to fetch reports from local storage: ${message}.`);
+             alert(`Failed to load data: ${message}`);
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        loadReports();
-    }, [loadReports]);
+        fetchReports();
+    }, [fetchReports]);
     
     const handleSelectReport = (id: string) => {
         setSelectedReportId(id);
@@ -50,9 +53,26 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({ isGuest, onBackToLo
         setView('list');
     };
 
-    const handleSaveReport = (savedReport: ConcreteReport) => {
-        // Refresh the list after a save
-        loadReports();
+    const handleSaveReport = async (savedReport: ConcreteReport) => {
+        if (isGuest) return; // Guests can't save
+
+        try {
+            await dbService.saveReport(savedReport);
+            // Optimistically update local state
+            setReports(prevReports => {
+                const existingIndex = prevReports.findIndex(r => r.uniqueRefNo === savedReport.uniqueRefNo);
+                if (existingIndex > -1) {
+                    const updatedReports = [...prevReports];
+                    updatedReports[existingIndex] = savedReport;
+                    return updatedReports;
+                }
+                return [savedReport, ...prevReports];
+            });
+        } catch (err) {
+             const message = err instanceof Error ? err.message : 'An unknown error occurred while saving.';
+             setError(message);
+             alert(`Save failed: ${message}`);
+        }
     };
 
     const handleExport = () => {
@@ -71,12 +91,12 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({ isGuest, onBackToLo
             if (errors.length > 0) {
                 alert(`Import completed with some issues:\n- ${errors.join('\n- ')}`);
             }
-            // Save imported reports to DB, overwriting duplicates
-            for (const report of importedReports) {
-                await db.saveReport(report);
+            if (importedReports.length > 0) {
+              await dbService.saveMultipleReports(importedReports);
+              alert(`Successfully saved ${importedReports.length} reports locally.`);
             }
-            await loadReports(); // Refresh list from DB
-            alert(`Successfully imported and saved ${importedReports.length} reports.`);
+            // Refresh data from local storage
+            await fetchReports();
         } catch (err) {
             const message = err instanceof Error ? err.message : 'An unknown error occurred during import.';
             setError(message);
@@ -92,7 +112,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({ isGuest, onBackToLo
     };
 
     if (loading) {
-        return <div className="text-center p-10">Loading reports...</div>;
+        return <div className="text-center p-10">Loading reports from local storage...</div>;
     }
     
     if (error) {

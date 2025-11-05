@@ -5,6 +5,7 @@ import { PlusCircleIcon } from './icons/PlusCircleIcon.tsx';
 import { ArrowDownTrayIcon } from './icons/ArrowDownTrayIcon.tsx';
 import { DocumentArrowUpIcon } from './icons/DocumentArrowUpIcon.tsx';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon.tsx';
+import { MagnifyingGlassIcon } from './icons/MagnifyingGlassIcon.tsx';
 
 interface ReportListProps {
   reports: ConcreteReport[];
@@ -48,6 +49,7 @@ const calculateAverageStrength = (report: ConcreteReport, period: 'seven' | 'twe
 
 
 const ReportList: React.FC<ReportListProps> = ({ reports, onSelectReport, onCreateNew, onExport, onImport, onExportTemplate, onBackToLogin, isGuest }) => {
+  const [searchTerm, setSearchTerm] = React.useState('');
   const importInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleImportClick = () => {
@@ -60,6 +62,17 @@ const ReportList: React.FC<ReportListProps> = ({ reports, onSelectReport, onCrea
       e.target.value = ''; // Reset input to allow re-importing the same file
     }
   };
+
+  const filteredReports = reports.filter(report => {
+    if (!searchTerm) {
+      return true;
+    }
+    const lowercasedTerm = searchTerm.toLowerCase();
+    const clientNameMatch = report.clientName?.toLowerCase().includes(lowercasedTerm);
+    const gradeMatch = report.grade?.toLowerCase().includes(lowercasedTerm);
+    const refNoMatch = report.uniqueRefNo.toLowerCase().includes(lowercasedTerm);
+    return clientNameMatch || gradeMatch || refNoMatch;
+  });
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
@@ -94,11 +107,29 @@ const ReportList: React.FC<ReportListProps> = ({ reports, onSelectReport, onCrea
         </div>
         )}
       </div>
+
+      <div className="mb-4">
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="search"
+            name="report-search"
+            id="report-search"
+            className="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-3 text-gray-900 placeholder-gray-500 shadow-sm focus:border-brand-accent focus:ring-1 focus:ring-brand-accent sm:text-sm transition"
+            placeholder="Search by Ref No., Client, or Grade..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
-        {reports.length === 0 ? (
+        {filteredReports.length === 0 ? (
           <div className="text-center py-10 text-gray-500">
-            <p>No reports found.</p>
-            <p className="text-sm mt-1">Create a new report or import data to get started.</p>
+            <p>{searchTerm ? `No reports found for "${searchTerm}".` : 'No reports found.'}</p>
+            {!searchTerm && <p className="text-sm mt-1">Create a new report or import data to get started.</p>}
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
@@ -110,12 +141,11 @@ const ReportList: React.FC<ReportListProps> = ({ reports, onSelectReport, onCrea
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">7d Strength (N/mm²)</th>
                 <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">28d Strength (N/mm²)</th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Quality Score</th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {reports.map((report) => {
+              {filteredReports.map((report) => {
                 const sevenDayStrength = report.analysis?.sevenDaysResults?.averageStrength ?? calculateAverageStrength(report, 'seven');
                 const twentyEightDayStrength = report.analysis?.twentyEightDaysResults?.averageStrength ?? calculateAverageStrength(report, 'twentyEight');
 
@@ -130,9 +160,6 @@ const ReportList: React.FC<ReportListProps> = ({ reports, onSelectReport, onCrea
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">
                       {twentyEightDayStrength > 0 ? twentyEightDayStrength.toFixed(2) : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">
-                      {report.analysis ? report.analysis.qualityScore : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button onClick={() => onSelectReport(report.uniqueRefNo)} className="text-brand-primary hover:text-brand-dark flex items-center gap-1 ml-auto">

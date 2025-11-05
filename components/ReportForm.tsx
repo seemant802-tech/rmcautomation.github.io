@@ -2,6 +2,7 @@ import React from 'react';
 // Fix: Add file extension to import.
 import { ReportFormData } from '../types.ts';
 import { PaperClipIcon } from './icons/PaperClipIcon.tsx';
+import { ClipboardDocumentCheckIcon } from './icons/ClipboardDocumentCheckIcon.tsx';
 
 interface ReportFormProps {
   formData: Partial<ReportFormData>;
@@ -17,8 +18,8 @@ const ReportForm: React.FC<ReportFormProps> = ({ formData, onFormChange, onFileC
   
   const inputClass = "w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-brand-accent focus:border-brand-accent transition disabled:bg-gray-100 disabled:cursor-not-allowed";
 
-  const is7DayComplete = !!formData.sevenDaysLoad1 && !!formData.sevenDaysLoad2 && !!formData.sevenDaysLoad3;
-  const is28DayComplete = !!formData.twentyEightDaysLoad1 && !!formData.twentyEightDaysLoad2 && !!formData.twentyEightDaysLoad3;
+  const is7DayLocked = !!(formData.sevenDaysLoad1 && formData.sevenDaysLoad2 && formData.sevenDaysLoad3 && formData.sevenDaysCtmMediaBlob);
+  const is28DayLocked = !!(formData.twentyEightDaysLoad1 && formData.twentyEightDaysLoad2 && formData.twentyEightDaysLoad3 && formData.twentyEightDaysCtmMediaBlob);
 
   const calculateStrength = (loadStr: string, sizeStr: string): number => {
     const load = parseFloat(loadStr);
@@ -50,18 +51,19 @@ const ReportForm: React.FC<ReportFormProps> = ({ formData, onFormChange, onFileC
   const renderFileInput = (name: 'sevenDaysCtmMedia' | 'twentyEightDaysCtmMedia', label: string, disabled: boolean, existingBlob?: Blob) => (
     <div className="md:col-span-4">
       <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      {existingBlob ? (
-        <a 
-          href={URL.createObjectURL(existingBlob)} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="flex items-center text-sm text-blue-600 hover:underline"
-        >
-          <PaperClipIcon className="h-4 w-4 mr-1"/> View Attached Media
-        </a>
-      ) : (
-        <input type="file" id={name} name={name} onChange={onFileChange} disabled={isReadOnly || disabled || isLoading} accept="image/*,video/*" className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-brand-primary hover:file:bg-green-100 disabled:opacity-50" />
-      )}
+      <div className="flex items-center gap-4">
+        {existingBlob && (
+          <a
+            href={URL.createObjectURL(existingBlob)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center text-sm text-blue-600 hover:underline flex-shrink-0"
+          >
+            <PaperClipIcon className="h-4 w-4 mr-1"/> View Attached Media
+          </a>
+        )}
+        <input type="file" id={name} name={name} onChange={onFileChange} disabled={isReadOnly || disabled || isLoading} accept="image/*" className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-brand-primary hover:file:bg-green-100 disabled:opacity-50" />
+      </div>
     </div>
   );
 
@@ -152,8 +154,10 @@ const ReportForm: React.FC<ReportFormProps> = ({ formData, onFormChange, onFileC
             { [1, 2, 3].map(i => (
                 <div key={`7d-${i}`}>
                     <label className="block text-sm font-medium text-gray-700 mb-1 text-center">{i}</label>
-                    <input type="number" step="any" name={`sevenDaysWeight${i}`} value={formData[`sevenDaysWeight${i}` as keyof ReportFormData] || ''} onChange={onFormChange} disabled={isReadOnly || is7DayComplete || isLoading} className={`${inputClass} mb-2 text-center`} placeholder="0.00" />
-                    <input type="number" step="any" name={`sevenDaysLoad${i}`} value={formData[`sevenDaysLoad${i}` as keyof ReportFormData] || ''} onChange={onFormChange} disabled={isReadOnly || is7DayComplete || isLoading} className={`${inputClass} text-center`} placeholder="0.00" />
+                    {/* Fix: Cast dynamic property access to string to satisfy input value type. */}
+                    <input type="number" step="any" name={`sevenDaysWeight${i}`} value={formData[`sevenDaysWeight${i}` as keyof ReportFormData] as string || ''} onChange={onFormChange} disabled={isReadOnly || is7DayLocked || isLoading} className={`${inputClass} mb-2 text-center`} placeholder="0.00" />
+                    {/* Fix: Cast dynamic property access to string to satisfy input value type. */}
+                    <input type="number" step="any" name={`sevenDaysLoad${i}`} value={formData[`sevenDaysLoad${i}` as keyof ReportFormData] as string || ''} onChange={onFormChange} disabled={isReadOnly || is7DayLocked || isLoading} className={`${inputClass} text-center`} placeholder="0.00" />
                     <div className="text-center p-2 mt-2 font-mono text-brand-dark bg-gray-100 rounded h-10 flex items-center justify-center">
                         {strengths7d[i-1].toFixed(2)}
                     </div>
@@ -163,7 +167,7 @@ const ReportForm: React.FC<ReportFormProps> = ({ formData, onFormChange, onFileC
                 <span className="font-semibold text-gray-600">Average 7-Day Strength:</span>
                 <span className="font-mono text-lg font-bold text-brand-dark ml-2">{avgStrength7d.toFixed(2)} N/mm²</span>
             </div>
-            {renderFileInput('sevenDaysCtmMedia', 'Attach CTM Media (Image/Video)', is7DayComplete, formData.sevenDaysCtmMediaBlob)}
+            {renderFileInput('sevenDaysCtmMedia', 'Attach CTM Media (Image Only)', is7DayLocked, formData.sevenDaysCtmMediaBlob)}
         </div>
       </fieldset>
       
@@ -183,8 +187,10 @@ const ReportForm: React.FC<ReportFormProps> = ({ formData, onFormChange, onFileC
             { [1, 2, 3].map(i => (
                 <div key={`28d-${i}`}>
                     <label className="block text-sm font-medium text-gray-700 mb-1 text-center">{i}</label>
-                    <input type="number" step="any" name={`twentyEightDaysWeight${i}`} value={formData[`twentyEightDaysWeight${i}` as keyof ReportFormData] || ''} onChange={onFormChange} disabled={isReadOnly || is28DayComplete || isLoading} className={`${inputClass} mb-2 text-center`} placeholder="0.00" />
-                    <input type="number" step="any" name={`twentyEightDaysLoad${i}`} value={formData[`twentyEightDaysLoad${i}` as keyof ReportFormData] || ''} onChange={onFormChange} disabled={isReadOnly || is28DayComplete || isLoading} className={`${inputClass} text-center`} placeholder="0.00" />
+                    {/* Fix: Cast dynamic property access to string to satisfy input value type. */}
+                    <input type="number" step="any" name={`twentyEightDaysWeight${i}`} value={formData[`twentyEightDaysWeight${i}` as keyof ReportFormData] as string || ''} onChange={onFormChange} disabled={isReadOnly || is28DayLocked || isLoading} className={`${inputClass} mb-2 text-center`} placeholder="0.00" />
+                    {/* Fix: Cast dynamic property access to string to satisfy input value type. */}
+                    <input type="number" step="any" name={`twentyEightDaysLoad${i}`} value={formData[`twentyEightDaysLoad${i}` as keyof ReportFormData] as string || ''} onChange={onFormChange} disabled={isReadOnly || is28DayLocked || isLoading} className={`${inputClass} text-center`} placeholder="0.00" />
                     <div className="text-center p-2 mt-2 font-mono text-brand-dark bg-gray-100 rounded h-10 flex items-center justify-center">
                         {strengths28d[i-1].toFixed(2)}
                     </div>
@@ -194,7 +200,7 @@ const ReportForm: React.FC<ReportFormProps> = ({ formData, onFormChange, onFileC
                 <span className="font-semibold text-gray-600">Average 28-Day Strength:</span>
                 <span className="font-mono text-lg font-bold text-brand-dark ml-2">{avgStrength28d.toFixed(2)} N/mm²</span>
             </div>
-            {renderFileInput('twentyEightDaysCtmMedia', 'Attach CTM Media (Image/Video)', is28DayComplete, formData.twentyEightDaysCtmMediaBlob)}
+            {renderFileInput('twentyEightDaysCtmMedia', 'Attach CTM Media (Image Only)', is28DayLocked, formData.twentyEightDaysCtmMediaBlob)}
         </div>
       </fieldset>
 
@@ -202,6 +208,33 @@ const ReportForm: React.FC<ReportFormProps> = ({ formData, onFormChange, onFileC
         <label htmlFor="observations" className="block text-sm font-medium text-gray-700 mb-1">Observations</label>
         <textarea id="observations" name="observations" rows={4} value={formData.observations || ''} onChange={onFormChange} disabled={isReadOnly || isLoading} className={inputClass} placeholder="Note any visual defects, anomalies, or special conditions..."></textarea>
       </div>
+
+      {!isReadOnly && isEditing && (
+        <fieldset className="border border-gray-200 p-4 rounded-lg">
+          <legend className="text-lg font-medium text-gray-800 px-2 flex items-center">
+            <ClipboardDocumentCheckIcon className="h-5 w-5 mr-2" /> Final Signed Report
+          </legend>
+          <div className="mt-4">
+            <label htmlFor="signedReportPdf" className="block text-sm font-medium text-gray-700 mb-2">Upload Signed Report (PDF)</label>
+            {formData.signedReportPdfBlob ? (
+              <div className="flex items-center gap-4">
+                 <a
+                    href={URL.createObjectURL(formData.signedReportPdfBlob)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center text-sm text-blue-600 hover:underline"
+                  >
+                    <PaperClipIcon className="h-4 w-4 mr-1"/> View Signed Report
+                  </a>
+                <input type="file" id="signedReportPdf" name="signedReportPdf" onChange={onFileChange} disabled={isReadOnly || isLoading} accept="application/pdf" className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-brand-primary hover:file:bg-green-100 disabled:opacity-50" />
+              </div>
+            ) : (
+              <input type="file" id="signedReportPdf" name="signedReportPdf" onChange={onFileChange} disabled={isReadOnly || isLoading} accept="application/pdf" className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-brand-primary hover:file:bg-green-100 disabled:opacity-50" />
+            )}
+            <p className="text-xs text-gray-500 mt-2">Print the report, have it signed by the Quality Incharge, then upload the final scanned PDF document here.</p>
+          </div>
+        </fieldset>
+      )}
 
       {!isReadOnly && (
         <div className="pt-2">

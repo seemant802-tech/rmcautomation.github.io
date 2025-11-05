@@ -3,6 +3,7 @@ import React from 'react';
 import { ConcreteReport, TestResults } from '../types.ts';
 import { ShieldCheckIcon } from './icons/ShieldCheckIcon.tsx';
 import { PaperClipIcon } from './icons/PaperClipIcon.tsx';
+import { DocumentArrowDownIcon } from './icons/DocumentArrowDownIcon.tsx';
 
 interface ReportDisplayProps {
   report: ConcreteReport;
@@ -129,6 +130,19 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ report }) => {
           <div className="space-y-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg break-words border">
               <p><strong>Generated At:</strong> {new Date(report.timestamp).toLocaleString()}</p>
               <p><strong>Verification Hash (SHA-256):</strong> <span className="font-mono text-xs">{report.hash}</span></p>
+              {report.signedReportPdfBlob && (
+                <div className="pt-2 border-t mt-2">
+                  <p className="font-semibold">Final Signed Report:</p>
+                  <a
+                    href={URL.createObjectURL(report.signedReportPdfBlob)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center text-sm text-blue-600 hover:underline mt-1"
+                  >
+                    <DocumentArrowDownIcon className="h-4 w-4 mr-1"/> View Uploaded PDF
+                  </a>
+                </div>
+              )}
           </div>
         </div>
       )}
